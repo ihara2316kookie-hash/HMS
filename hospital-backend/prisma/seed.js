@@ -159,11 +159,11 @@ async function main() {
   if (medCount === 0) {
     await prisma.medicine.createMany({
       data: [
-        { name: 'Amoxicillin 500mg', category: 'Antibiotic', stock: 120, minStock: 20, price: 12.5, expiryDate: new Date('2027-06-30') },
-        { name: 'Paracetamol 500mg', category: 'Analgesic', stock: 350, minStock: 50, price: 5.0, expiryDate: new Date('2028-01-15') },
-        { name: 'Metformin 850mg', category: 'Antidiabetic', stock: 80, minStock: 15, price: 18.0, expiryDate: new Date('2027-11-20') },
-        { name: 'Atorvastatin 20mg', category: 'Cardiovascular', stock: 45, minStock: 10, price: 24.0, expiryDate: new Date('2026-12-01') },
-        { name: 'Omeprazole 20mg', category: 'Gastrointestinal', stock: 14, minStock: 20, price: 15.0, expiryDate: new Date('2026-08-15') }, // Low stock alert
+        { name: 'Amoxicillin 500mg', genericName: 'Amoxicillin', category: 'Antibiotic', unit: 'Capsule', stockQuantity: 120, price: 12.5, expiryDate: new Date('2027-06-30'), manufacturer: 'Generic Pharma' },
+        { name: 'Paracetamol 500mg', genericName: 'Acetaminophen', category: 'Analgesic', unit: 'Tablet', stockQuantity: 350, price: 5.0, expiryDate: new Date('2028-01-15'), manufacturer: 'Generic Pharma' },
+        { name: 'Metformin 850mg', genericName: 'Metformin HCl', category: 'Antidiabetic', unit: 'Tablet', stockQuantity: 80, price: 18.0, expiryDate: new Date('2027-11-20'), manufacturer: 'Generic Pharma' },
+        { name: 'Atorvastatin 20mg', genericName: 'Atorvastatin', category: 'Cardiovascular', unit: 'Tablet', stockQuantity: 45, price: 24.0, expiryDate: new Date('2026-12-01'), manufacturer: 'Generic Pharma' },
+        { name: 'Omeprazole 20mg', genericName: 'Omeprazole', category: 'Gastrointestinal', unit: 'Capsule', stockQuantity: 14, price: 15.0, expiryDate: new Date('2026-08-15'), manufacturer: 'Generic Pharma' },
       ],
     });
     console.log('Seeded initial medicines');
@@ -173,18 +173,18 @@ async function main() {
   const wardCount = await prisma.ward.count();
   if (wardCount === 0) {
     const wardICU = await prisma.ward.create({
-      data: { name: 'Intensive Care Unit (ICU)', floor: '3rd Floor', capacity: 10 },
+      data: { name: 'Intensive Care Unit (ICU)', description: 'Critical care unit', totalBeds: 10 },
     });
     const wardGeneral = await prisma.ward.create({
-      data: { name: 'General Ward North', floor: '2nd Floor', capacity: 20 },
+      data: { name: 'General Ward North', description: 'General inpatient ward', totalBeds: 20 },
     });
 
     await prisma.bed.createMany({
       data: [
-        { bedNumber: 'ICU-101', wardId: wardICU.id, status: 'AVAILABLE', pricePerDay: 500 },
-        { bedNumber: 'ICU-102', wardId: wardICU.id, status: 'AVAILABLE', pricePerDay: 500 },
-        { bedNumber: 'GW-201', wardId: wardGeneral.id, status: 'AVAILABLE', pricePerDay: 150 },
-        { bedNumber: 'GW-202', wardId: wardGeneral.id, status: 'AVAILABLE', pricePerDay: 150 },
+        { bedNumber: 'ICU-101', wardId: wardICU.id, status: 'AVAILABLE' },
+        { bedNumber: 'ICU-102', wardId: wardICU.id, status: 'AVAILABLE' },
+        { bedNumber: 'GW-201', wardId: wardGeneral.id, status: 'AVAILABLE' },
+        { bedNumber: 'GW-202', wardId: wardGeneral.id, status: 'AVAILABLE' },
       ],
     });
     console.log('Seeded wards and beds');
