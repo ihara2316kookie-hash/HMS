@@ -72,8 +72,8 @@ The UI was redesigned from scratch using a **healthcare blue design system** (`#
 
 | Service | URL |
 |---|---|
-| **Frontend / Live Application** | *(add your Vercel/Netlify URL here after deployment)* |
-| **Backend API** | *(add your Render/Railway URL here after deployment)* |
+| **Frontend / Live Application** | https://hospital-management-system-six-chi.vercel.app |
+| **Backend API** | https://hospital-management-system-production-1615.up.railway.app/api |
 
 ### Demo Login Credentials
 
