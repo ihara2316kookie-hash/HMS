@@ -24,13 +24,27 @@ const { startBackupJobs } = require('./jobs/backupJobs');
 
 const app = express();
 
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000']
-  : true;
-
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow non-browser requests (Postman, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    
+    // Allow localhost, vercel deployments, or configured FRONTEND_URL
+    if (
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.endsWith('.vercel.app') ||
+      (process.env.FRONTEND_URL && (process.env.FRONTEND_URL === '*' || origin === process.env.FRONTEND_URL.replace(/\/$/, '')))
+    ) {
+      return callback(null, true);
+    }
+
+    // Default allow caller origin
+    return callback(null, true);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 app.use(express.json());
