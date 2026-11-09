@@ -1,0 +1,354 @@
+const prisma = require('../utils/prisma');
+const { logAction } = require('../utils/audit');
+
+const createWard = async (req, res) => {
+  try {
+    const { name, description, totalBeds } = req.body;
+
+    const ward = await prisma.ward.create({
+      data: {
+        name,
+        description,
+        totalBeds: parseInt(totalBeds) || 0,
+      },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'CREATE',
+      module: 'INPATIENT',
+      details: `Created ward ${ward.name}`,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({ message: 'Ward created successfully', ward });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getAllWards = async (req, res) => {
+  try {
+    const wards = await prisma.ward.findMany({
+      include: { beds: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json(wards);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const updateWard = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, totalBeds } = req.body;
+
+    const ward = await prisma.ward.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        totalBeds: totalBeds !== undefined ? parseInt(totalBeds) : undefined,
+      },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'UPDATE',
+      module: 'INPATIENT',
+      details: `Updated ward ${ward.name}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ message: 'Ward updated successfully', ward });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const deleteWard = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const beds = await prisma.bed.count({ where: { wardId: id } });
+    if (beds > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete ward because it still has beds. Delete beds first.',
+      });
+    }
+
+    const ward = await prisma.ward.delete({ where: { id } });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'DELETE',
+      module: 'INPATIENT',
+      details: `Deleted ward ${ward.name}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ message: 'Ward deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const createBed = async (req, res) => {
+  try {
+    const { wardId, bedNumber } = req.body;
+
+    const bed = await prisma.bed.create({
+      data: {
+        wardId,
+        bedNumber,
+        status: 'AVAILABLE',
+      },
+      include: { ward: true },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'CREATE',
+      module: 'INPATIENT',
+      details: `Created bed ${bed.bedNumber} in ward ${wardId}`,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({ message: 'Bed created successfully', bed });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getAllBeds = async (req, res) => {
+  try {
+    const beds = await prisma.bed.findMany({
+      include: { ward: true },
+      orderBy: { bedNumber: 'asc' },
+    });
+    res.json(beds);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getAvailableBeds = async (req, res) => {
+  try {
+    const beds = await prisma.bed.findMany({
+      where: { status: 'AVAILABLE' },
+      include: { ward: true },
+    });
+    res.json(beds);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const admitPatient = async (req, res) => {
+  try {
+    const { patientId, bedId, admittedBy, reason, notes } = req.body;
+
+    if (!patientId || !bedId) {
+      return res.status(400).json({ message: 'patientId and bedId are required' });
+    }
+
+    const bed = await prisma.bed.findUnique({ where: { id: bedId } });
+
+    if (!bed) {
+      return res.status(404).json({ message: 'Bed not found' });
+    }
+
+    if (bed.status !== 'AVAILABLE') {
+      return res.status(400).json({ message: 'Bed is not available' });
+    }
+
+    const [admission] = await prisma.$transaction([
+      prisma.admission.create({
+        data: {
+          patientId,
+          bedId,
+          admittedBy,
+          reason,
+          notes,
+          status: 'ADMITTED',
+        },
+        include: {
+          patient: { select: { id: true, name: true, phone: true } },
+          bed: { include: { ward: true } },
+        },
+      }),
+      prisma.bed.update({
+        where: { id: bedId },
+        data: { status: 'OCCUPIED' },
+      }),
+    ]);
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'CREATE',
+      module: 'INPATIENT',
+      details: `Admitted patient ${patientId} to bed ${bedId}`,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({
+      message: 'Patient admitted successfully',
+      admission,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getAllAdmissions = async (req, res) => {
+  try {
+    const admissions = await prisma.admission.findMany({
+      include: {
+        patient: { select: { id: true, name: true, phone: true } },
+        bed: { include: { ward: true } },
+      },
+      orderBy: { admissionDate: 'desc' },
+    });
+
+    res.json(admissions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const dischargePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const admission = await prisma.admission.findUnique({
+      where: { id },
+    });
+
+    if (!admission) {
+      return res.status(404).json({ message: 'Admission not found' });
+    }
+
+    if (admission.status === 'DISCHARGED') {
+      return res.status(400).json({ message: 'Patient already discharged' });
+    }
+
+    const [updatedAdmission] = await prisma.$transaction([
+      prisma.admission.update({
+        where: { id },
+        data: {
+          status: 'DISCHARGED',
+          dischargeDate: new Date(),
+        },
+        include: {
+          patient: { select: { name: true } },
+          bed: true,
+        },
+      }),
+      prisma.bed.update({
+        where: { id: admission.bedId },
+        data: { status: 'AVAILABLE' },
+      }),
+    ]);
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'UPDATE',
+      module: 'INPATIENT',
+      details: `Discharged admission ${id}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      message: 'Patient discharged successfully',
+      admission: updatedAdmission,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const updateAdmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { admittedBy, reason, notes } = req.body;
+
+    const admission = await prisma.admission.update({
+      where: { id },
+      data: { admittedBy, reason, notes },
+      include: {
+        patient: { select: { id: true, name: true, phone: true } },
+        bed: { include: { ward: true } },
+      },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'UPDATE',
+      module: 'INPATIENT',
+      details: `Updated admission ${id}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ message: 'Admission updated successfully', admission });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const deleteAdmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const admission = await prisma.admission.findUnique({ where: { id } });
+
+    if (!admission) {
+      return res.status(404).json({ message: 'Admission not found' });
+    }
+
+    await prisma.$transaction([
+      prisma.admission.delete({ where: { id } }),
+      prisma.bed.update({
+        where: { id: admission.bedId },
+        data: { status: 'AVAILABLE' },
+      }),
+    ]);
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'DELETE',
+      module: 'INPATIENT',
+      details: `Deleted admission ${id}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ message: 'Admission deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  createWard,
+  getAllWards,
+  updateWard,
+  deleteWard,
+  createBed,
+  getAllBeds,
+  getAvailableBeds,
+  admitPatient,
+  getAllAdmissions,
+  dischargePatient,
+  updateAdmission,
+  deleteAdmission,
+};

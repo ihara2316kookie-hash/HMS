@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import './styles/theme.css';
+
+/* Backwards compatibility aliases for existing pages until refactored in phases */
+:root {
+  --primary: var(--color-primary);
+  --primary-dark: var(--color-primary-active);
+  --primary-soft: var(--color-primary-light);
+  --secondary: var(--color-navy);
+  --secondary-soft: var(--bg-muted);
+  --bg: var(--bg-canvas);
+  --card: var(--bg-card);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
+  --border: var(--border-color);
+  --danger: var(--status-danger);
+  --sidebar: var(--color-navy);
+  --sidebar-hover: var(--color-navy-hover);
+  --shadow: var(--shadow-sm);
+  --radius: var(--radius-lg);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}

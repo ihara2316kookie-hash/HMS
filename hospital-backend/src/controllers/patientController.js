@@ -1,0 +1,140 @@
+const prisma = require('../utils/prisma');
+const { logAction } = require('../utils/audit');
+
+const createPatient = async (req, res) => {
+  try {
+    const { name, email, phone, gender, dateOfBirth, address, bloodGroup } = req.body;
+
+    const patient = await prisma.patient.create({
+      data: {
+        name,
+        email,
+        phone,
+        gender,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        address,
+        bloodGroup,
+      },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'CREATE',
+      module: 'PATIENT',
+      details: `Created patient ${patient.name}`,
+      ipAddress: req.ip,
+    });
+
+    res.status(201).json({
+      message: 'Patient created successfully',
+      patient,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getAllPatients = async (req, res) => {
+  try {
+    const patients = await prisma.patient.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(patients);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getPatientById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const patient = await prisma.patient.findUnique({
+      where: { id },
+      include: {
+        appointments: true,
+        medicalRecords: true,
+        bills: true,
+      },
+    });
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    res.json(patient);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const updatePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, gender, dateOfBirth, address, bloodGroup } = req.body;
+
+    const patient = await prisma.patient.update({
+      where: { id },
+      data: {
+        name,
+        email,
+        phone,
+        gender,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        address,
+        bloodGroup,
+      },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'UPDATE',
+      module: 'PATIENT',
+      details: `Updated patient ${patient.name || id}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      message: 'Patient updated successfully',
+      patient,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const deletePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.patient.delete({
+      where: { id },
+    });
+
+    await logAction({
+      userId: req.user?.id,
+      action: 'DELETE',
+      module: 'PATIENT',
+      details: `Deleted patient ${id}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ message: 'Patient deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  createPatient,
+  getAllPatients,
+  getPatientById,
+  updatePatient,
+  deletePatient,
+};

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+hospital-frontend/node_modules/
+hospital-backend/node_modules/
+
+# Environment Variables & Secrets (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+hospital-frontend/.env
+hospital-frontend/.env.*
+!hospital-frontend/.env.example
+hospital-backend/.env
+hospital-backend/.env.*
+!hospital-backend/.env.example
+
+# Build Outputs
+dist/
+dist-ssr/
+hospital-frontend/dist/
+build/
+*.local
+
+# Uploads & Backups
+hospital-backend/uploads/*
+!hospital-backend/uploads/.gitkeep
+hospital-backend/backups/daily/*
+!hospital-backend/backups/daily/.gitkeep
+hospital-backend/backups/weekly/*
+!hospital-backend/backups/weekly/.gitkeep
+
+# System & Editor
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.vscode/
+.idea/
