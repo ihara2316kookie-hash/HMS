@@ -51,7 +51,7 @@ export default function Login() {
     try {
       const res = await api.post('/auth/login', {
         email: email.trim().toLowerCase(),
-        password,
+        password: password.trim(),
       });
       login(res.data.user, res.data.token);
       navigate('/dashboard');
